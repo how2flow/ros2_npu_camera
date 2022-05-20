@@ -1,0 +1,7 @@
+# colcon build
+build/
+install/
+log/
+
+# swp
+*.swp
