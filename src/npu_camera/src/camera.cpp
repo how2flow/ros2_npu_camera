@@ -34,6 +34,7 @@ void CamPublisher_::init_rga()
 int CamPublisher_::create_network()
 {
 	printf("Loading mode...\n");
+	model_name="/home/odroid/robot_ws/src/npu_camera/model/yolov5s-640-640.rknn";
 	model_data_size = 0;
 	model_data = load_model(model_name, &model_data_size);
 	ret = rknn_init(&ctx, model_data, model_data_size, 0, NULL);
@@ -190,7 +191,56 @@ void CamPublisher_::timerCallback()
 		exit(0);
 	}
 
-	convert_and_publish(frame);
+	IM_STATUS STATUS = imresize(src, dst, 0, 0);
+	cv::Mat resize_img(cv::Size(width, height), CV_8UC3, resize_buf);
+
+	inputs[0].buf = resize_buf;
+	rknn_inputs_set(ctx, io_num.n_input, inputs);
+
+	rknn_output outputs[3];
+	memset(outputs, 0, sizeof(outputs));
+	for (uint32_t i = 0; i < io_num.n_output; i++)
+	{
+	  outputs[i].want_float = 0;
+	}
+
+	ret = rknn_run(ctx, NULL);
+	ret = rknn_outputs_get(ctx, io_num.n_output, outputs, NULL);
+
+	//post process
+	float scale_w = 1.0f; // (float)width / img_width;
+	float scale_h = 1.0f; // (float)height / img_height;
+
+	detect_result_group_t detect_result_group;
+	std::vector<float> out_scales;
+	std::vector<int32_t> out_zps;
+	for (uint32_t i = 0; i < io_num.n_output; ++i)
+	{
+	  out_scales.push_back(output_attrs[i].scale);
+	  out_zps.push_back(output_attrs[i].zp);
+	}
+	post_process((int8_t *)outputs[0].buf, (int8_t *)outputs[1].buf, (int8_t *)outputs[2].buf,
+		  height, width, box_conf_threshold, nms_threshold,
+		  scale_w, scale_h, out_zps, out_scales, &detect_result_group);
+
+	// Draw Objects
+	char text[256];
+	for (int i = 0; i < detect_result_group.count; i++)
+	{
+	  detect_result_t *det_result = &(detect_result_group.results[i]);
+	  sprintf(text, "%s %.1f%%", det_result->name, det_result->prop * 100);
+
+	  int x1 = det_result->box.left;
+	  int y1 = det_result->box.top;
+	  int x2 = det_result->box.right;
+	  int y2 = det_result->box.bottom;
+	  rectangle(resize_img, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(255, 0, 0, 255), 3);
+	  putText(resize_img, text, cv::Point(x1, y1 - 12), cv::FONT_HERSHEY_TRIPLEX, 1, cv::Scalar(0, 0, 255));
+	}
+
+	ret = rknn_outputs_release(ctx, io_num.n_output, outputs);
+
+	convert_and_publish(resize_img);
 }
 
 std::string CamPublisher_::mat2encoding(int mat_type)

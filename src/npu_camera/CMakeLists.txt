@@ -35,10 +35,10 @@ pkg_check_modules(GPIOD REQUIRED libgpiod) # /usr/lib/$ARCH/pkg-config/libgpiod.
 include_directories(${WIRINGPI_INCLUDE_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/include/${PROJECT_NAME})
 
-add_executable(camera src/main.cpp src/camera.cpp src/postprocess.cc)
+add_executable(camera src/camera_main.cpp src/camera.cpp src/postprocess.cc)
 ament_target_dependencies(camera geometry_msgs OpenCV PkgConfig rclcpp sensor_msgs std_msgs)
 
-add_executable(operator src/operator.cpp)
+add_executable(operator src/operator_main.cpp src/operator.cpp)
 ament_target_dependencies(operator geometry_msgs OpenCV PkgConfig rclcpp sensor_msgs std_msgs)
 
 target_link_libraries(camera
