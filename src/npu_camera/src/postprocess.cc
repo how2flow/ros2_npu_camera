@@ -21,7 +21,7 @@
 #include <set>
 #include "postprocess.h"
 #include <stdint.h>
-#define LABEL_NALE_TXT_PATH "/home/steve/robot_ws/src/npu_camera/model/coco_80_labels_list.txt"
+#define LABEL_NALE_TXT_PATH "/home/odroid/robot_ws/src/npu_camera/model/coco_80_labels_list.txt"
 
 static char *labels[OBJ_CLASS_NUM];
 
@@ -86,7 +86,7 @@ int readLines(const char *fileName, char *lines[], int max_line)
     return i;
 }
 
-int loadLabelName(const char *locationFilename, char *label[])
+int loadLabelName(char *locationFilename, char *label[])
 {
     printf("loadLabelName %s\n", locationFilename);
     readLines(locationFilename, label, OBJ_CLASS_NUM);
@@ -266,10 +266,19 @@ int post_process(int8_t *input0, int8_t *input1, int8_t *input2, int model_in_h,
                  detect_result_group_t *group)
 {
     static int init = -1;
+    char *buffer;
+
+    buffer = (char *)malloc(100);
     if (init == -1)
     {
         int ret = 0;
-        ret = loadLabelName(LABEL_NALE_TXT_PATH, labels);
+
+	if (getenv("COCO") == NULL)
+	    snprintf(buffer, 100, LABEL_NALE_TXT_PATH);
+	else
+	    snprintf(buffer, 100, "%s", getenv("COCO"));
+
+	ret = loadLabelName(buffer, labels);
         if (ret < 0)
         {
             return -1;
