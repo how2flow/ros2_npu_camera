@@ -1,4 +1,4 @@
-#include "operator.h"
+#include "img_sub.h"
 
 //functions
 void CamSubscriber_::initialize()

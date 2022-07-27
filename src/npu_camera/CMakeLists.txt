@@ -20,7 +20,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(geometry_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -29,28 +28,24 @@ find_package(std_msgs REQUIRED)
 
 set(RGA_LIBS rga)
 set(RKNN_RT_LIB ${CMAKE_SOURCE_DIR}/lib/librknnrt.so)
-pkg_check_modules(WIRINGPI REQUIRED libwiringpi2) # /usr/lib/$ARCH/pkg-config/libwiringpi2.pc
-pkg_check_modules(GPIOD REQUIRED libgpiod) # /usr/lib/$ARCH/pkg-config/libgpiod.pc
 
 include_directories(${WIRINGPI_INCLUDE_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/include/${PROJECT_NAME})
 
-add_executable(camera src/camera_main.cpp src/camera.cpp src/postprocess.cc)
-ament_target_dependencies(camera geometry_msgs OpenCV PkgConfig rclcpp sensor_msgs std_msgs)
+add_executable(img_pub src/pub_main.cpp src/img_pub.cpp src/postprocess.cc)
+ament_target_dependencies(img_pub OpenCV PkgConfig rclcpp sensor_msgs std_msgs)
 
-add_executable(operator src/operator_main.cpp src/operator.cpp)
-ament_target_dependencies(operator geometry_msgs OpenCV PkgConfig rclcpp sensor_msgs std_msgs)
+add_executable(img_sub src/sub_main.cpp src/img_sub.cpp)
+ament_target_dependencies(img_sub OpenCV PkgConfig rclcpp sensor_msgs std_msgs)
 
-target_link_libraries(camera
+target_link_libraries(img_pub
     ${OpenCV_LIBS}
     ${RGA_LIBS}
     ${RKNN_RT_LIB}
 )
 
-target_link_libraries(operator
-    ${GPIOD_LIBRARIES}
+target_link_libraries(img_sub
     ${OpenCV_LIBS}
-    ${WIRINGPI_LIBRARIES}
 )
 
 if(BUILD_TESTING)
@@ -66,8 +61,8 @@ endif()
 
 # Install
 install(TARGETS
-        camera
-        operator
+	img_pub
+	img_sub
         DESTINATION lib/${PROJECT_NAME}
 )
 

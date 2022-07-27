@@ -1,4 +1,4 @@
-#include "camera.h"
+#include "img_pub.h"
 
 int main(int argc, char* argv[])
 {
