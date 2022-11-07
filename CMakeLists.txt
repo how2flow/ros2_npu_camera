@@ -61,14 +61,14 @@ endif()
 
 # Install
 install(TARGETS
-	img_pub
-	img_sub
-        DESTINATION lib/${PROJECT_NAME}
+  img_pub
+  img_sub
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY
-        model
-        DESTINATION lib/${PROJECT_NAME}
+  model
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()

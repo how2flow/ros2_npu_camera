@@ -265,110 +265,102 @@ int post_process(int8_t *input0, int8_t *input1, int8_t *input2, int model_in_h,
                  std::vector<int32_t> &qnt_zps, std::vector<float> &qnt_scales,
                  detect_result_group_t *group)
 {
-    static int init = -1;
-    char *buffer;
+  static int init = -1;
+  char *buffer;
 
-    buffer = (char *)malloc(100);
-    if (init == -1)
-    {
-        int ret = 0;
+  buffer = (char *)malloc(100);
+  if (init == -1) {
+    int ret = 0;
+    if (getenv("COCO") == NULL)
+      snprintf(buffer, 100, LABEL_NALE_TXT_PATH);
+    else
+      snprintf(buffer, 100, "%s", getenv("COCO"));
 
-	if (getenv("COCO") == NULL)
-	    snprintf(buffer, 100, LABEL_NALE_TXT_PATH);
-	else
-	    snprintf(buffer, 100, "%s", getenv("COCO"));
-
-	ret = loadLabelName(buffer, labels);
-        if (ret < 0)
-        {
-            return -1;
-        }
-
-        init = 0;
+    ret = loadLabelName(buffer, labels);
+    if (ret < 0) {
+      return -1;
     }
-    memset(group, 0, sizeof(detect_result_group_t));
+    init = 0;
+  }
+  memset(group, 0, sizeof(detect_result_group_t));
 
-    std::vector<float> filterBoxes;
-    std::vector<float> objProbs;
-    std::vector<int> classId;
-    
-    // stride 8
-    int stride0 = 8;
-    int grid_h0 = model_in_h / stride0;
-    int grid_w0 = model_in_w / stride0;
-    int validCount0 = 0;
-    validCount0 = process(input0, (int *)anchor0, grid_h0, grid_w0, model_in_h, model_in_w,
-                          stride0, filterBoxes, objProbs, classId, conf_threshold, qnt_zps[0], qnt_scales[0]);
+  std::vector<float> filterBoxes;
+  std::vector<float> objProbs;
+  std::vector<int> classId;
+  
+  // stride 8
+  int stride0 = 8;
+  int grid_h0 = model_in_h / stride0;
+  int grid_w0 = model_in_w / stride0;
+  int validCount0 = 0;
+  validCount0 = process(input0, (int *)anchor0, grid_h0, grid_w0, model_in_h, model_in_w,
+                        stride0, filterBoxes, objProbs, classId, conf_threshold, qnt_zps[0], qnt_scales[0]);
 
-    // stride 16
-    int stride1 = 16;
-    int grid_h1 = model_in_h / stride1;
-    int grid_w1 = model_in_w / stride1;
-    int validCount1 = 0;
-    validCount1 = process(input1, (int *)anchor1, grid_h1, grid_w1, model_in_h, model_in_w,
-                          stride1, filterBoxes, objProbs, classId, conf_threshold, qnt_zps[1], qnt_scales[1]);
+  // stride 16
+  int stride1 = 16;
+  int grid_h1 = model_in_h / stride1;
+  int grid_w1 = model_in_w / stride1;
+  int validCount1 = 0;
+  validCount1 = process(input1, (int *)anchor1, grid_h1, grid_w1, model_in_h, model_in_w,
+                        stride1, filterBoxes, objProbs, classId, conf_threshold, qnt_zps[1], qnt_scales[1]);
 
-    // stride 32
-    int stride2 = 32;
-    int grid_h2 = model_in_h / stride2;
-    int grid_w2 = model_in_w / stride2;
-    int validCount2 = 0;
-    validCount2 = process(input2, (int *)anchor2, grid_h2, grid_w2, model_in_h, model_in_w,
-                          stride2, filterBoxes, objProbs, classId, conf_threshold, qnt_zps[2], qnt_scales[2]);
+  // stride 32
+  int stride2 = 32;
+  int grid_h2 = model_in_h / stride2;
+  int grid_w2 = model_in_w / stride2;
+  int validCount2 = 0;
+  validCount2 = process(input2, (int *)anchor2, grid_h2, grid_w2, model_in_h, model_in_w,
+                        stride2, filterBoxes, objProbs, classId, conf_threshold, qnt_zps[2], qnt_scales[2]);
 
-    int validCount = validCount0 + validCount1 + validCount2;
-    // no object detect
-    if (validCount <= 0)
-    {
-        return 0;
+  int validCount = validCount0 + validCount1 + validCount2;
+  // no object detect
+  if (validCount <= 0) {
+      return 0;
+  }
+
+  std::vector<int> indexArray;
+  for (int i = 0; i < validCount; ++i) {
+      indexArray.push_back(i);
+  }
+
+  quick_sort_indice_inverse(objProbs, 0, validCount - 1, indexArray);
+
+  std::set<int> class_set(std::begin(classId),std::end(classId));
+  
+  for(auto c : class_set) {
+      nms(validCount, filterBoxes, classId, indexArray, c, nms_threshold);
+  }
+
+  int last_count = 0;
+  group->count = 0;
+  /* box valid detect target */
+  for (int i = 0; i < validCount; ++i) {
+    if (indexArray[i] == -1 || last_count >= OBJ_NUMB_MAX_SIZE) {
+      continue;
     }
 
-    std::vector<int> indexArray;
-    for (int i = 0; i < validCount; ++i)
-    {
-        indexArray.push_back(i);
-    }
+    int n = indexArray[i];
 
-    quick_sort_indice_inverse(objProbs, 0, validCount - 1, indexArray);
+    float x1 = filterBoxes[n * 4 + 0];
+    float y1 = filterBoxes[n * 4 + 1];
+    float x2 = x1 + filterBoxes[n * 4 + 2];
+    float y2 = y1 + filterBoxes[n * 4 + 3];
+    int id = classId[n];
+    float obj_conf = objProbs[i];
 
-    std::set<int> class_set(std::begin(classId),std::end(classId));
-    
-    for(auto c : class_set){
-        nms(validCount, filterBoxes, classId, indexArray, c, nms_threshold);
-    }
+    group->results[last_count].box.left = (int)(clamp(x1, 0, model_in_w) / scale_w);
+    group->results[last_count].box.top = (int)(clamp(y1, 0, model_in_h) / scale_h);
+    group->results[last_count].box.right = (int)(clamp(x2, 0, model_in_w) / scale_w);
+    group->results[last_count].box.bottom = (int)(clamp(y2, 0, model_in_h) / scale_h);
+    group->results[last_count].prop = obj_conf;
+    char *label = labels[id];
+    strncpy(group->results[last_count].name, label, OBJ_NAME_MAX_SIZE);
 
-    int last_count = 0;
-    group->count = 0;
-    /* box valid detect target */
-    for (int i = 0; i < validCount; ++i)
-    {
+    // printf("result %2d: (%4d, %4d, %4d, %4d), %s\n", i, group->results[last_count].box.left, group->results[last_count].box.top,
+    //        group->results[last_count].box.right, group->results[last_count].box.bottom, label);
+    last_count++;
+  }
+  group->count = last_count;
 
-        if (indexArray[i] == -1 || last_count >= OBJ_NUMB_MAX_SIZE)
-        {
-            continue;
-        }
-        int n = indexArray[i];
-
-        float x1 = filterBoxes[n * 4 + 0];
-        float y1 = filterBoxes[n * 4 + 1];
-        float x2 = x1 + filterBoxes[n * 4 + 2];
-        float y2 = y1 + filterBoxes[n * 4 + 3];
-        int id = classId[n];
-        float obj_conf = objProbs[i];
-
-        group->results[last_count].box.left = (int)(clamp(x1, 0, model_in_w) / scale_w);
-        group->results[last_count].box.top = (int)(clamp(y1, 0, model_in_h) / scale_h);
-        group->results[last_count].box.right = (int)(clamp(x2, 0, model_in_w) / scale_w);
-        group->results[last_count].box.bottom = (int)(clamp(y2, 0, model_in_h) / scale_h);
-        group->results[last_count].prop = obj_conf;
-        char *label = labels[id];
-        strncpy(group->results[last_count].name, label, OBJ_NAME_MAX_SIZE);
-
-        // printf("result %2d: (%4d, %4d, %4d, %4d), %s\n", i, group->results[last_count].box.left, group->results[last_count].box.top,
-        //        group->results[last_count].box.right, group->results[last_count].box.bottom, label);
-        last_count++;
-    }
-    group->count = last_count;
-
-    return 0;
+  return 0;
 }
