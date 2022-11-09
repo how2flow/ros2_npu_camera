@@ -317,3 +317,12 @@ void CamPublisher_::convert_and_publish(const cv::Mat& frame)
 
   pub_->publish(msg);
 }
+
+int main(int argc, char* argv[])
+{
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<CamPublisher_>();
+  rclcpp::spin(node);
+  rclcpp::shutdown();
+  return 0;
+}
