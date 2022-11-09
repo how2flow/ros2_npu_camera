@@ -32,10 +32,10 @@ set(RKNN_RT_LIB ${CMAKE_SOURCE_DIR}/lib/librknnrt.so)
 include_directories(${WIRINGPI_INCLUDE_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/include/${PROJECT_NAME})
 
-add_executable(img_pub src/pub_main.cpp src/img_pub.cpp src/postprocess.cc)
+add_executable(img_pub src/img_pub.cpp src/postprocess.cc)
 ament_target_dependencies(img_pub OpenCV PkgConfig rclcpp sensor_msgs std_msgs)
 
-add_executable(img_sub src/sub_main.cpp src/img_sub.cpp)
+add_executable(img_sub src/img_sub.cpp)
 ament_target_dependencies(img_sub OpenCV PkgConfig rclcpp sensor_msgs std_msgs)
 
 target_link_libraries(img_pub
@@ -61,14 +61,14 @@ endif()
 
 # Install
 install(TARGETS
-	img_pub
-	img_sub
-        DESTINATION lib/${PROJECT_NAME}
+  img_pub
+  img_sub
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY
-        model
-        DESTINATION lib/${PROJECT_NAME}
+  model
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()

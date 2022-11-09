@@ -12,24 +12,24 @@
 
 typedef struct _BOX_RECT
 {
-    int left;
-    int right;
-    int top;
-    int bottom;
+  int left;
+  int right;
+  int top;
+  int bottom;
 } BOX_RECT;
 
 typedef struct __detect_result_t
 {
-    char name[OBJ_NAME_MAX_SIZE];
-    BOX_RECT box;
-    float prop;
+  char name[OBJ_NAME_MAX_SIZE];
+  BOX_RECT box;
+  float prop;
 } detect_result_t;
 
 typedef struct _detect_result_group_t
 {
-    int id;
-    int count;
-    detect_result_t results[OBJ_NUMB_MAX_SIZE];
+  int id;
+  int count;
+  detect_result_t results[OBJ_NUMB_MAX_SIZE];
 } detect_result_group_t;
 
 int post_process(int8_t *input0, int8_t *input1, int8_t *input2, int model_in_h, int model_in_w,
